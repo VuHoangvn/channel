@@ -1,12 +1,12 @@
+from .util_func import fast_non_dominated_sort, write_to_file, find_bests
+from SN_input.constant import Constants
+from SN_input.cost_func import CostFunc
 import numpy as np
 import random
-from SN_input.constant import Constants
-from SN_input import cost_func
-from .util_func import *
 
 def mode_reproduction(population, data, p_best):
     no_sensors = data.num_of_sensors
-    size = Constants.size_population
+    size = len(population)
     pg = Constants.pg
     pm = Constants.pm
     pp = Constants.pp
@@ -33,28 +33,30 @@ def mode_reproduction(population, data, p_best):
                 new_population[i][j] = population[r][j]
     return new_population
 
-def run_mode(population, data):
-    size = Constants.size_population
+def run_mode(population, data, outfile):
+    size = len(population)
     num_ss = data.num_of_sensors
     new_population = np.zeros((size, num_ss))
-    coverage_cost = cost_func.coverage(population, data, size)
-    max_comm_loss = cost_func.max_comm_loss(population, data, size)
-    no_sensors_placed = cost_func.no_placed_sensors(population, data, size)
-    rank = fast_non_dominated_sort(coverage_cost, max_comm_loss, no_sensors_placed, size)
+    cf = CostFunc(population, data, size)
+    cost = cf.getCost()
+
+    rank = fast_non_dominated_sort(cost)
     p_best = find_bests(rank)
     best = p_best[random.randint(0, len(p_best)-1)]
     loop = Constants.loop
     i = 0
-    while i < loop:
+    result = []
+    while i < 1:
+        result = []
         new_population = mode_reproduction(population, data, p_best)
-        coverage_cost = cost_func.coverage(population, data, size)
-        max_comm_loss = cost_func.max_comm_loss(new_population, data, size)
-        no_sensors_placed = cost_func.no_placed_sensors(new_population, data, size)
-        rank = fast_non_dominated_sort(coverage_cost, max_comm_loss, no_sensors_placed, size)
+        cf.setPopulation(new_population)
+        cost = cf.getCost()
+        rank = fast_non_dominated_sort(cost)
         p_best = find_bests(rank)
-        best = p_best[random.randint(0, len(p_best)-1)]
+        for i in p_best:
+            result.append(cost[i])
         i = i + 1
-        # write_to_file("output/mode/converge_no-dem1_r25_1.out", coverage_cost[best], max_comm_loss[best], no_sensors_placed[best])    
+
     for i in range(len(p_best)):
-        write_to_file("output/mode/converge_no-dem1_r25_1.out", coverage_cost[p_best[i]], max_comm_loss[p_best[i]], no_sensors_placed[p_best[i]])
+        write_to_file(outfile, result)
     
